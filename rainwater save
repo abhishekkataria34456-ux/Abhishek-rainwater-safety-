@@ -1,0 +1,91 @@
+#include <LiquidCrystal_I2C.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// LCD setup
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Temperature sensor setup
+#define ONE_WIRE_BUS 2
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature tempSensor(&oneWire);
+
+// Pin definitions
+#define TDS_PIN A0
+#define LEVEL_PIN A1
+#define BUZZER_PIN 9
+#define RELAY1_PIN 5   // Pump 1
+#define RELAY2_PIN 6   // Pump 2
+
+// Variables
+float temperature = 0;
+int tdsValue = 0;
+int waterLevel = 0;
+
+void setup() {
+lcd.init();
+lcd.backlight();
+
+tempSensor.begin();
+
+pinMode(TDS_PIN, INPUT);
+pinMode(LEVEL_PIN, INPUT);
+pinMode(BUZZER_PIN, OUTPUT);
+pinMode(RELAY1_PIN, OUTPUT);
+pinMode(RELAY2_PIN, OUTPUT);
+
+digitalWrite(RELAY1_PIN, LOW);
+digitalWrite(RELAY2_PIN, LOW);
+digitalWrite(BUZZER_PIN, LOW);
+
+lcd.setCursor(0, 0);
+lcd.print("Smart Rain Sys");
+lcd.setCursor(0, 1);
+lcd.print("Initializing...");
+delay(2000);
+lcd.clear();
+}
+
+void loop() {
+
+// Read temperature
+tempSensor.requestTemperatures();
+temperature = tempSensor.getTempCByIndex(0);
+
+// Read TDS
+int rawTds = analogRead(TDS_PIN);
+tdsValue = map(rawTds, 0, 1023, 0, 500);
+
+// Read water level
+int rawLevel = analogRead(LEVEL_PIN);
+waterLevel = map(rawLevel, 0, 1023, 0, 100);
+
+// Pump 1 (always ON for intake)
+digitalWrite(RELAY1_PIN, HIGH);
+
+// Pump 2 control (clean water only)
+if (tdsValue < 300) {
+digitalWrite(RELAY2_PIN, HIGH);
+digitalWrite(BUZZER_PIN, LOW);
+} else {
+digitalWrite(RELAY2_PIN, LOW);
+digitalWrite(BUZZER_PIN, HIGH);
+}
+
+// Display on LCD
+lcd.setCursor(0, 0);
+lcd.print("TDS:");
+lcd.print(tdsValue);
+lcd.print("ppm ");
+
+lcd.setCursor(0, 1);
+lcd.print("L:");
+lcd.print(waterLevel);
+lcd.print("% ");
+
+lcd.print("T:");
+lcd.print(temperature);
+lcd.print("C ");
+
+delay(2000);
+}
